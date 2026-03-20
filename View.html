@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>訂單查詢｜內湖高中</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3a5c;--navy2:#0f2540;--blue:#2563a8;--blue-l:#dbeafe;
+  --gold:#d97706;--gold-l:#fef3c7;--green:#059669;--green-l:#d1fae5;
+  --purple:#7c3aed;--purple-l:#ede9fe;--red:#dc2626;--red-l:#fee2e2;
+  --gray:#6b7280;--gray-l:#f3f4f6;--border:#e5e7eb;--text:#111827;--text2:#4b5563;
+  --shadow:0 1px 3px rgba(0,0,0,.1);--radius:8px;--radius-lg:12px;
+}
+body{font-family:'Noto Sans TC',sans-serif;background:#f0f4f8;color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.hdr{background:linear-gradient(135deg,var(--navy2),var(--navy));color:#fff;padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.hl{display:flex;align-items:center;gap:12px}
+.hlogo{width:34px;height:34px;background:#3b82f6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px}
+.htitle{font-size:15px;font-weight:700}
+.hsub{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px}
+.hr{font-size:12px;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:8px}
+.vpill{background:rgba(255,255,255,.2);color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.main{padding:20px 24px;max-width:1200px;margin:0 auto}
+.card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--border)}
+.ch{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ct{font-size:14px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
+.fbar{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--border);padding:14px 20px;margin-bottom:14px}
+.fr{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.dq{display:flex;gap:4px}
+.dqb{padding:5px 11px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s;font-family:inherit}
+.dqb:hover{border-color:var(--blue);color:var(--blue)}
+.dqb.active{background:var(--navy);border-color:var(--navy);color:#fff}
+input,select{font-family:inherit;font-size:13px;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;outline:none;transition:border-color .15s;background:#fff}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,168,.1)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:all .15s}
+.btn-p{background:var(--navy);color:#fff}.btn-p:hover{background:var(--navy2)}
+.btn-gh{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-gh:hover{background:var(--gray-l)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.info{background:var(--blue-l);border:1px solid #bfdbfe;border-radius:var(--radius);padding:10px 16px;margin-bottom:14px;font-size:13px;color:#1e40af;display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.bpe{background:var(--blue-l);color:#1e40af}
+.b-ordered{background:var(--gold-l);color:#92400e}
+.bse{background:var(--purple-l);color:var(--purple)}
+.bca{background:var(--red-l);color:var(--red)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:#f8fafc}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.tr{text-align:right}.tc{text-align:center}.nw{white-space:nowrap}
+.tsum{padding:11px 20px;background:#f8fafc;border-top:2px solid var(--border);display:flex;gap:20px;font-size:13px;flex-wrap:wrap}
+.si{display:flex;gap:5px;align-items:center}
+.sl{color:var(--text2)}.sv{font-weight:700;color:var(--navy)}
+.ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:16px}
+.obtn{padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;background:#fff;color:var(--text);transition:all .15s;text-align:center}
+.obtn:hover{border-color:var(--blue);color:var(--blue)}
+.obtn.active{border-color:var(--navy);background:var(--navy);color:#fff;font-weight:700}
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.mo.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column}
+.mh{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mtt{font-size:15px;font-weight:700;color:var(--navy)}
+.mb{padding:20px;overflow-y:auto;flex:1}
+.mft{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.xb{background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray);line-height:1}
+.tl{display:flex;flex-direction:column;gap:8px}
+.tli{display:flex;align-items:flex-start;gap:10px;font-size:12px}
+.tld{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;background:var(--green)}
+hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0}
+.empty{text-align:center;padding:48px 20px;color:var(--text2)}
+.ei{font-size:40px;margin-bottom:10px}
+.toastc{position:fixed;top:68px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--text);color:#fff;padding:9px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;max-width:300px}
+.toast.error{background:var(--red)}
+.load{text-align:center;padding:40px;color:var(--text2)}
+.flex{display:flex}.g8{gap:8px}.ic{align-items:center}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hl">
+    <div class="hlogo">內</div>
+    <div><div class="htitle">餐盒訂購查詢</div><div class="hsub">臺北市立內湖高級中學</div></div>
+  </div>
+  <div class="hr">
+    <span id="todayDateLabel" style="font-size:12px;color:rgba(255,255,255,.75);"></span>
+    <span><?= userEmail ?></span>
+    <span class="vpill">唯讀</span>
+  </div>
+</header>
+
+<main class="main">
+  <div class="info">ℹ️ 此為唯讀查詢介面。請選擇處室查詢訂單狀態，如需新增或修改請聯絡總務處。</div>
+
+  <!-- 處室選擇 -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch">
+      <div class="ct">🏫 請選擇處室</div>
+      <button class="btn btn-gh btn-sm" onclick="clearOffice()">查看全部</button>
+    </div>
+    <div class="ogrid" id="officeGrid"><div class="load">⏳ 載入中...</div></div>
+  </div>
+
+  <!-- 篩選 -->
+  <div class="fbar">
+    <div class="fr">
+      <div class="fg">
+        <div class="fl">時間範圍</div>
+        <div class="dq">
+          <button class="dqb active" onclick="setRange('today',this)">今天</button>
+          <button class="dqb" onclick="setRange('3d',this)">3天</button>
+          <button class="dqb" onclick="setRange('week',this)">本週</button>
+          <button class="dqb" onclick="setRange('all',this)">全部</button>
+          <button class="dqb" onclick="setRange('custom',this)">自訂</button>
+        </div>
+      </div>
+      <div class="fg" id="customG" style="display:none">
+        <div class="fl">日期區間</div>
+        <div class="flex ic g8">
+          <input type="date" id="fFrom" onchange="applyF()" style="width:130px">
+          <span style="color:var(--text2)">—</span>
+          <input type="date" id="fTo" onchange="applyF()" style="width:130px">
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">狀態</div>
+        <select id="fStatus" onchange="applyF()" style="width:110px">
+          <option value="">全部</option>
+          <option value="待確認">🔵 待確認</option>
+          <option value="已訂購">🟡 已訂購</option>
+          <option value="已核銷">🟣 已核銷</option>
+          <option value="已取消">🔴 已取消</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-left:auto">
+        <div class="fl">&nbsp;</div>
+        <div class="flex g8">
+          <button class="btn btn-gh" onclick="clearF()">清除</button>
+          <button class="btn btn-p" onclick="loadOrders()">🔄 重整</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">📦 訂單列表 <span id="ocnt" style="background:var(--blue-l);color:var(--blue);padding:2px 8px;border-radius:20px;font-size:11px">0筆</span></div>
+    </div>
+    <div id="ordersContent"><div class="load">⏳ 請選擇處室...</div></div>
+    <div class="tsum" id="tsum" style="display:none">
+      <div class="si"><span class="sl">訂單：</span><span class="sv" id="sO">0</span><span class="sl">筆</span></div>
+      <div class="si"><span class="sl">葷食：</span><span class="sv" id="sM">0</span><span class="sl">個</span></div>
+      <div class="si"><span class="sl">素食：</span><span class="sv" id="sV">0</span><span class="sl">個</span></div>
+      <div class="si"><span class="sl">總數：</span><span class="sv" id="sT">0</span><span class="sl">個</span></div>
+      <div class="si"><span class="sl">金額：</span><span class="sv" id="sA">$0</span></div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal: 詳情 -->
+<div class="mo" id="detailMo">
+  <div class="modal">
+    <div class="mh"><div class="mtt">📋 訂單詳情</div><button class="xb" onclick="closeMo('detailMo')">✕</button></div>
+    <div class="mb" id="detailC"></div>
+    <div class="mft"><button class="btn btn-gh" onclick="closeMo('detailMo')">關閉</button></div>
+  </div>
+</div>
+
+<div class="toastc" id="toastC"></div>
+
+<script>
+var cfg={offices:[]};
+var allOrders=[],filteredOrders=[];
+var selOffice='';
+
+window.addEventListener('load',function(){
+  (function(){
+    var d=new Date();
+    var wd=['日','一','二','三','四','五','六'][d.getDay()];
+    var s=(d.getMonth()+1)+'月'+d.getDate()+'日（'+wd+'）';
+    var el=document.getElementById('todayDateLabel');
+    if(el) el.textContent=s;
+  })();
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){cfg=r;renderOfficeGrid();}
+    setRange('today',document.querySelector('.dqb.active'));
+    loadOrders();
+  }).getConfig();
+});
+
+function renderOfficeGrid(){
+  var h='';
+  cfg.offices.forEach(function(o){
+    h+='<button class="obtn'+(o===selOffice?' active':'')+'" onclick="selOff(\''+e(o)+'\')">'+e(o)+'</button>';
+  });
+  document.getElementById('officeGrid').innerHTML=h||'<div style="color:var(--text2);padding:8px;">尚無處室資料</div>';
+}
+function selOff(office){selOffice=office;renderOfficeGrid();applyF();}
+function clearOffice(){selOffice='';renderOfficeGrid();applyF();}
+
+function loadOrders(){
+  document.getElementById('ordersContent').innerHTML='<div class="load">⏳ 載入中...</div>';
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){allOrders=r.data;applyF();}
+    else toast('載入失敗：'+r.error,'error');
+  }).withFailureHandler(function(ex){toast('錯誤：'+ex.message,'error');}).getOrders(null);
+}
+
+function applyF(){
+  var status=document.getElementById('fStatus').value;
+  var from=document.getElementById('fFrom').value;
+  var to=document.getElementById('fTo').value;
+  filteredOrders=allOrders.filter(function(o){
+    if(selOffice&&o.office!==selOffice)return false;
+    if(status&&o.status!==status)return false;
+    if(from&&o.date<from)return false;
+    if(to&&o.date>to)return false;
+    return true;
+  });
+  renderOrders();updateSum();
+}
+
+function renderOrders(){
+  var el=document.getElementById('ordersContent');
+  document.getElementById('ocnt').textContent=filteredOrders.length+'筆';
+  if(!filteredOrders.length){
+    el.innerHTML='<div class="empty"><div class="ei">📭</div><div>'+(selOffice?'「'+selOffice+'」目前沒有符合條件的訂單':'請選擇處室查詢訂單')+'</div></div>';
+    document.getElementById('tsum').style.display='none';return;
+  }
+  var h='<div class="tw"><table><thead><tr>';
+  h+='<th>處室</th><th>廠商</th><th>訂購人</th><th>日期</th><th>時間</th><th>送餐地點</th>';
+  h+='<th class="tr">葷</th><th class="tr">素</th><th class="tr">總數</th><th class="tr">單價</th><th class="tr">總計</th>';
+  h+='<th class="tc">狀態</th><th class="tc">詳情</th></tr></thead><tbody>';
+  filteredOrders.forEach(function(o){
+    h+='<tr>';
+    h+='<td class="nw">'+e(o.office)+'</td><td class="nw">'+e(o.vendor)+'</td><td class="nw">'+e(o.buyer)+'</td>';
+    h+='<td class="nw">'+e(o.date)+'</td><td class="nw">'+e(o.time)+'</td><td class="nw">'+e(o.location)+'</td>';
+    h+='<td class="tr">'+(o.meat||0)+'</td><td class="tr">'+(o.veg||0)+'</td>';
+    h+='<td class="tr" style="font-weight:700;">'+(o.total||0)+'</td>';
+    h+='<td class="tr">$'+(o.price||0)+'</td><td class="tr" style="font-weight:700;">$'+(o.amount||0)+'</td>';
+    h+='<td class="tc nw">'+mkBadge(o.status)+'</td>';
+    h+='<td class="tc"><button style="background:none;border:none;cursor:pointer;font-size:15px;" onclick="showDetail(\''+o.id+'\')">🔍</button></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  el.innerHTML=h;
+  document.getElementById('tsum').style.display='flex';
+}
+
+function mkBadge(s){
+  var m={'待確認':'bpe 🔵','已訂購':'b-ordered 🟡','已核銷':'bse 🟣','已取消':'bca 🔴'};
+  var p=(m[s]||'').split(' ');return'<span class="badge '+(p[0]||'')+'">'+(p[1]||'')+' '+e(s)+'</span>';
+}
+
+function updateSum(){
+  var meat=0,veg=0,total=0,amt=0;
+  filteredOrders.forEach(function(o){meat+=o.meat||0;veg+=o.veg||0;total+=o.total||0;amt+=o.amount||0;});
+  document.getElementById('sO').textContent=filteredOrders.length;
+  document.getElementById('sM').textContent=meat;
+  document.getElementById('sV').textContent=veg;
+  document.getElementById('sT').textContent=total;
+  document.getElementById('sA').textContent='$'+amt.toLocaleString();
+}
+
+function showDetail(id){
+  var o=allOrders.find(function(x){return x.id===id;});if(!o)return;
+  var f=[['處室',o.office],['廠商',o.vendor],['訂購人',o.buyer],['日期',o.date],
+         ['時間',o.time],['送餐地點',o.location],
+         ['葷食',o.meat+'個'],['素食',o.veg+'個'],['總數',o.total+'個'],['單價','$'+o.price],['總計','$'+o.amount]];
+  var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">';
+  f.forEach(function(x){h+='<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px;">'+x[0]+'</div><div style="font-weight:500;">'+e(String(x[1]||'—'))+'</div></div>';});
+  h+='</div>';
+  var tl=[['待確認',o.statusPendingAt],['已訂購',o.statusOrderedAt],['已核銷',o.statusSettledAt],['已取消',o.statusCancelledAt]].filter(function(t){return t[1];});
+  if(tl.length){
+    h+='<hr class="dv"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">狀態紀錄</div><div class="tl">';
+    tl.forEach(function(t){h+='<div class="tli"><div class="tld"></div><div><div>'+t[0]+'</div><div style="color:var(--text2);font-size:11px;">'+t[1]+'</div></div></div>';});
+    h+='</div>';
+  }
+  document.getElementById('detailC').innerHTML=h;
+  openMo('detailMo');
+}
+
+function setRange(r,btn){
+  document.querySelectorAll('.dqb').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  var today=todayStr();
+  document.getElementById('customG').style.display=r==='custom'?'flex':'none';
+  if(r==='custom')return;
+  var from='',to='';
+  if(r==='today'){from=today;to=today;}
+  else if(r==='3d'){from=addD(today,-2);to=today;}
+  else if(r==='week'){from=addD(today,-6);to=today;}
+  document.getElementById('fFrom').value=from;
+  document.getElementById('fTo').value=to;
+  applyF();
+}
+function clearF(){document.getElementById('fStatus').value='';setRange('today',document.querySelector('.dqb'));}
+
+function openMo(id){document.getElementById(id).classList.add('open');}
+function closeMo(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mo').forEach(function(el){el.addEventListener('click',function(ev){if(ev.target===el)el.classList.remove('open');});});
+
+function toast(msg,type){
+  var c=document.getElementById('toastC'),t=document.createElement('div');
+  t.className='toast '+(type||'');t.textContent=msg;
+  c.appendChild(t);setTimeout(function(){t.remove();},3000);
+}
+function e(s){if(s===undefined||s===null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function addD(ds,n){var d=new Date(ds);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function pad(n){return String(n).padStart(2,'0');}
+</script>
+
+<footer style="text-align:center;padding:16px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);margin-top:24px;">© 臺北市立內湖高級中學 餐盒訂購系統 · By Chris Chou</footer>
+</body>
+</html>

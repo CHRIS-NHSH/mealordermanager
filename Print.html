@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>餐盒訂購單｜內湖高中</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#000;background:#fff;}
+
+@media screen {
+  body{background:#ccc;padding:20px;}
+  .controls{
+    position:fixed;top:0;left:0;right:0;
+    background:#1a3a5c;color:#fff;
+    padding:10px 20px;
+    display:flex;align-items:center;gap:12px;
+    z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3);
+  }
+  .controls h2{font-size:14px;font-weight:600;flex:1;}
+  .btn-print{background:#fff;color:#1a3a5c;border:none;padding:7px 20px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-close{background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.3);padding:7px 14px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;}
+  .a4-page{margin:60px auto 16px;box-shadow:0 2px 16px rgba(0,0,0,.2);border-radius:2px;}
+}
+
+/* A4 頁面，直向，4格排列 */
+.a4-page{
+  width:210mm;
+  height:297mm;
+  background:#fff;
+  display:grid;
+  grid-template-rows:repeat(4,1fr);
+  overflow:hidden;
+  page-break-after:always;
+}
+.a4-page:last-child{page-break-after:auto;}
+
+/* 每格訂購單 */
+.slip{
+  border-bottom:2px dashed #999;
+  padding:5mm 8mm 4mm;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  overflow:hidden;
+}
+.slip:last-child{border-bottom:none;}
+
+/* 標題 */
+.slip-title{
+  font-size:16px;
+  font-weight:900;
+  text-align:center;
+  letter-spacing:2px;
+  margin-bottom:2px;
+}
+.slip-line{
+  border:none;
+  border-top:2px solid #000;
+  margin:2px 0 4px;
+}
+
+/* 資訊列 */
+.info-grid{
+  display:grid;
+  grid-template-columns:auto 1fr auto 1fr;
+  gap:4px 10px;
+  align-items:baseline;
+  font-size:14px;
+}
+.lbl{font-weight:700;white-space:nowrap;font-size:13px;}
+.val{
+  border-bottom:1px solid #666;
+  padding-bottom:1px;
+  font-size:14px;
+  font-weight:500;
+}
+
+/* 數量區塊 */
+.qty-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:4px;
+  border:1.5px solid #888;
+  border-radius:4px;
+  padding:6px 8px;
+  margin:4px 0;
+}
+.qty-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+}
+.qty-lbl{font-size:12px;font-weight:700;color:#333;}
+.qty-val{
+  font-size:22px;
+  font-weight:900;
+  line-height:1;
+  border-bottom:2px solid #333;
+  min-width:40px;
+  text-align:center;
+  padding:0 4px 2px;
+}
+.qty-unit{font-size:11px;color:#666;}
+
+/* 廠商、地點 */
+.loc-grid{
+  display:grid;
+  grid-template-columns:auto 1fr auto 1fr;
+  gap:4px 10px;
+  align-items:baseline;
+  font-size:14px;
+}
+
+/* 空白格 */
+.slip-empty{
+  border-bottom:2px dashed #ddd;
+  display:flex;align-items:center;justify-content:center;
+  color:#ddd;font-size:13px;
+}
+.slip-empty:last-child{border-bottom:none;}
+
+@media print{
+  .controls{display:none;}
+  body{background:#fff;padding:0;}
+  .a4-page{margin:0;box-shadow:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h2>📋 餐盒訂購單 — <span id="countLabel">載入中...</span></h2>
+  <button class="btn-print" onclick="window.print()">🖨️ 列印</button>
+  <button class="btn-close" onclick="window.close()">✕ 關閉</button>
+</div>
+
+<div id="root"></div>
+
+<script>
+var orders=[];
+var purchaserName='';
+
+// 先載入採購人，再載入訂單
+google.script.run
+  .withSuccessHandler(function(pr){
+    purchaserName = (pr.success && pr.name) ? pr.name : '';
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r.success||!r.orders||!r.orders.length){
+          document.getElementById('root').innerHTML=
+            '<p style="padding:60px;text-align:center;color:#dc2626;font-size:16px;">⚠️ '+(r.error||'找不到列印資料')+'<br><br>'
+            +'<button onclick="window.close()" style="margin-top:12px;padding:8px 20px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">關閉</button></p>';
+          return;
+        }
+        orders=r.orders;
+        document.getElementById('countLabel').textContent='共 '+orders.length+' 張';
+        render();
+        if(orders.length<=4) setTimeout(function(){window.print();},500);
+      })
+      .withFailureHandler(function(ex){
+        document.getElementById('root').innerHTML='<p style="padding:60px;text-align:center;color:#dc2626;">錯誤：'+ex.message+'</p>';
+      })
+      .getPrintData();
+  })
+  .withFailureHandler(function(){
+    // 抓不到採購人也繼續
+    google.script.run.withSuccessHandler(function(r){
+      if(!r.success||!r.orders) return;
+      orders=r.orders;
+      document.getElementById('countLabel').textContent='共 '+orders.length+' 張';
+      render();
+    }).getPrintData();
+  })
+  .getPurchaser();
+
+function render(){
+  var root=document.getElementById('root');
+  // 每4筆一頁
+  for(var i=0;i<orders.length;i+=4){
+    var page=document.createElement('div');
+    page.className='a4-page';
+    var group=orders.slice(i,i+4);
+    // 補滿4格
+    while(group.length<4) group.push(null);
+    group.forEach(function(o){
+      var slip=document.createElement('div');
+      if(!o){
+        slip.className='slip-empty';
+        slip.textContent='（空白）';
+      } else {
+        slip.className='slip';
+        slip.innerHTML=buildSlip(o);
+      }
+      page.appendChild(slip);
+    });
+    root.appendChild(page);
+  }
+}
+
+function buildSlip(o){
+  var h='';
+  h+='<div class="slip-title">臺北市立內湖高級中學 餐盒訂購單</div>';
+  h+='<hr class="slip-line">';
+
+  // 第一列：請購人及分機、採購人
+  h+='<div class="info-grid">';
+  h+='<span class="lbl">請購人及分機</span><span class="val">'+esc(o.buyer)+(o.ext?' '+esc(o.ext):'')+'</span>';
+  h+='<span class="lbl">採購人</span><span class="val">'+esc(purchaserName)+'</span>';
+  h+='</div>';
+
+  // 第二列：送餐日期、送餐時間
+  h+='<div class="info-grid" style="margin-top:4px;">';
+  h+='<span class="lbl">送餐日期</span><span class="val">'+esc(o.date)+'</span>';
+  h+='<span class="lbl">送餐時間</span><span class="val">'+esc(o.time)+'</span>';
+  h+='</div>';
+
+  // 數量
+  h+='<div class="qty-grid">';
+  h+=qtyItem('葷食', o.meat);
+  h+=qtyItem('素食', o.veg);
+  h+=qtyItem('共', o.total);
+  h+=qtyItem('單價', o.price, '元');
+  h+=qtyItem('總價', o.amount, '元');
+  h+='</div>';
+
+  // 廠商、送餐地點
+  h+='<div class="loc-grid">';
+  h+='<span class="lbl">廠商</span><span class="val">'+esc(o.vendor)+'</span>';
+  h+='<span class="lbl">送餐地點</span><span class="val">'+esc(o.location)+'</span>';
+  h+='</div>';
+
+  return h;
+}
+
+function qtyItem(label, val, unit){
+  return '<div class="qty-item">'
+    +'<div class="qty-lbl">'+label+'</div>'
+    +'<div class="qty-val">'+esc(String(val||0))+'</div>'
+    +'<div class="qty-unit">'+(unit||'個')+'</div>'
+    +'</div>';
+}
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
