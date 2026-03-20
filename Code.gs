@@ -1,5 +1,5 @@
 // ==========================================
-// 臺北市立內湖高級中學 餐盒訂購系統
+// 臺北市立內湖高級中學 餐盒訂購管理系統
 // Code.gs
 // ==========================================
 
@@ -44,11 +44,12 @@ var ORDER_HEADERS = [
 ];
 
 var STATUS = {
-  PENDING:   '待確認',
-  ORDERED:   '已訂購',
-  SETTLED:   '已核銷',
-  CANCELLED: '已取消',
-  NOTIFIED:  '待通知出納',  // 發票已填，等通知出納匯款
+  PENDING:       '待確認',
+  PRINT_PENDING: '待列印',   // 電話/網路廠商已確認訂購，等待列印
+  ORDERED:       '已訂購',
+  SETTLED:       '已核銷',
+  CANCELLED:     '已取消',
+  NOTIFIED:      '待通知出納',
 };
 
 // ==========================================
@@ -102,7 +103,7 @@ function doGet(e) {
       var t = HtmlService.createTemplateFromFile('Admin');
       t.userEmail = email || ''; t.isAdmin = true; t.connected = false;
       return t.evaluate()
-        .setTitle('餐盒訂購系統｜內湖高中')
+        .setTitle('餐盒訂購管理系統｜內湖高中')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .addMetaTag('viewport','width=device-width,initial-scale=1');
     }
@@ -111,7 +112,7 @@ function doGet(e) {
     var t = HtmlService.createTemplateFromFile(isAdmin ? 'Admin' : 'View');
     t.userEmail = email || ''; t.isAdmin = isAdmin; t.connected = true;
     return t.evaluate()
-      .setTitle('餐盒訂購系統｜內湖高中')
+      .setTitle('餐盒訂購管理系統｜內湖高中')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   } catch(err) {
@@ -236,10 +237,10 @@ function getDashboardStats() {
       if (!date || status===STATUS.CANCELLED) continue;
 
       // 今天送餐
-      if (date===today) todayCnt++;
+      if (date===today && status!==STATUS.CANCELLED) todayCnt++;
 
       // 三天內需訂購（今天到三個工作天內，待確認）
-      if (status===STATUS.PENDING && date>=today && date<=in3) urgentCnt++;
+      if ((status===STATUS.PENDING||status===STATUS.PRINT_PENDING) && date>=today && date<=in3) urgentCnt++;
 
       // 待核銷：已訂購且送餐日已到（現金或轉帳都要處理）
       if (status===STATUS.ORDERED && date<=today) settleCnt++;
@@ -247,7 +248,7 @@ function getDashboardStats() {
       if (status===STATUS.NOTIFIED) settleCnt++;
 
       // 未來待訂購（三個工作天後，待確認）
-      if (status===STATUS.PENDING && date>in3) futureCnt++;
+      if ((status===STATUS.PENDING||status===STATUS.PRINT_PENDING) && date>in3) futureCnt++;
     }
     return { success:true, connected:true,
       today:todayCnt, urgent:urgentCnt, settle:settleCnt, future:futureCnt,
@@ -341,7 +342,7 @@ function updateOrder(d) {
     var meat=Number(d.meat)||0, veg=Number(d.veg)||0, price=Number(d.price)||0;
     var rn=idx+1;
     var currentStatus=String(data[idx][O.STATUS]);
-    var wasOrdered=(currentStatus===STATUS.ORDERED||currentStatus===STATUS.NOTIFIED);
+    var wasOrdered=(currentStatus===STATUS.ORDERED||currentStatus===STATUS.NOTIFIED||currentStatus===STATUS.PRINT_PENDING);
     sheet.getRange(rn, O.OFFICE+1, 1, 12).setValues([[
       d.office||'', d.ext||'', d.vendor||'', d.buyer||'',
       d.date||'', d.time||'', d.location||'',
@@ -382,7 +383,8 @@ function markAsOrdered(ids) {
     var ordered=[];
     ids.forEach(function(id) {
       var idx=_findById(data, id); if(idx<0) return;
-      if (data[idx][O.STATUS]===STATUS.PENDING) {
+      var cur=data[idx][O.STATUS];
+      if (cur===STATUS.PENDING || cur===STATUS.PRINT_PENDING) {
         sheet.getRange(idx+1, O.STATUS+1).setValue(STATUS.ORDERED);
         sheet.getRange(idx+1, O.STATUS_ORDERED_AT+1).setValue(now);
         sheet.getRange(idx+1, O.MODIFIED+1).setValue(false);
@@ -393,6 +395,19 @@ function markAsOrdered(ids) {
     var docResult = { skipped: true };
     try { docResult = saveOrdersToPdf(ordered); } catch(e) { Logger.log('saveOrdersToPdf:'+e.message); docResult = { success:false, error:e.message }; }
     return { success:true, orders:ordered, docResult:docResult };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// 電話/網路訂購確認：待確認 → 待列印
+function confirmCallOrder(id) {
+  try {
+    if (!_checkAdmin()) return { success:false, error:'無權限' };
+    var sheet=_getActiveOrderSheet();
+    var data=sheet.getDataRange().getValues();
+    var idx=_findById(data, id); if(idx<0) return { success:false, error:'找不到訂單' };
+    if (data[idx][O.STATUS]!==STATUS.PENDING) return { success:false, error:'狀態不符' };
+    sheet.getRange(idx+1, O.STATUS+1).setValue(STATUS.PRINT_PENDING);
+    return { success:true };
   } catch(e) { return { success:false, error:e.message }; }
 }
 
@@ -456,7 +471,7 @@ function getCashOrders() {
       if (pay!=='現金') continue;
 
       // 即將送餐（未來7天內，待確認或已訂購）
-      if ((status===STATUS.PENDING||status===STATUS.ORDERED) && date>today && date<=in7) {
+      if ((status===STATUS.PENDING||status===STATUS.PRINT_PENDING||status===STATUS.ORDERED) && date>today && date<=in7) {
         upcoming.push(o);
       }
       // 已送餐待核銷（已訂購，送餐日≤今天）
@@ -780,7 +795,7 @@ function sendDailyReminder() {
       var o=_rowToOrder(r);
       if (o.status===STATUS.CANCELLED) continue;
       if (nc.daily&&o.date===today) todayOrders.push(o);
-      if (nc.print&&o.date===in3&&o.status===STATUS.PENDING) printReminder.push(o);
+      if (nc.print&&o.date===in3&&(o.status===STATUS.PENDING||o.status===STATUS.PRINT_PENDING)) printReminder.push(o);
     }
     if (!todayOrders.length&&!printReminder.length) return;
     var subject='【內湖高中訂餐】每日提醒 '+today;

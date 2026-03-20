@@ -188,7 +188,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0}
 <header class="hdr">
   <div class="hl">
     <div class="hlogo">內</div>
-    <div><div class="htitle">餐盒訂購系統</div><div class="hsub">臺北市立內湖高級中學</div></div>
+    <div><div class="htitle">餐盒訂購管理系統</div><div class="hsub">臺北市立內湖高級中學</div></div>
   </div>
   <div class="hr2">
     <span id="todayDateLabel" style="font-size:12px;color:rgba(255,255,255,.75);"></span>
@@ -283,6 +283,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0}
         <select id="fStatus" onchange="applyF()" style="width:120px">
           <option value="">全部</option>
           <option value="待確認">🔵 待確認</option>
+          <option value="待列印">🟠 待列印</option>
           <option value="已訂購">🟡 已訂購</option>
           <option value="待通知出納">🟦 待通知出納</option>
           <option value="待核銷">💰 待核銷</option>
@@ -392,18 +393,18 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0}
   <!-- 紙本訂購 -->
   <div class="card" style="margin-bottom:16px;">
     <div class="ch">
-      <div class="ct2">📋 訂購並列印</div>
+      <div class="ct2">📋 紙本訂購</div>
       <button class="btn btn-p btn-sm" onclick="loadPendingOrders()">🔄 重整</button>
     </div>
     <div class="cb">
-      <div class="info-box">以下訂單廠商訂購方式為「紙本」，勾選後批次訂購並列印。其他訂購方式的訂單也可在此列印。</div>
+      <div class="info-box">以下訂單廠商訂購方式為「紙本」，勾選後批次列印訂購單。</div>
       <div id="pendingPrintContent"><div class="load">⏳ 載入中...</div></div>
     </div>
     <div class="tsum" id="pendingPrintTsum" style="display:none">
       <div class="si"><span class="sl">已選：</span><span class="sv" id="ppCnt">0</span><span class="sl">筆</span></div>
       <div class="si"><span class="sl">合計：</span><span class="sv" id="ppAmt">$0</span></div>
       <div style="margin-left:auto">
-        <button class="btn btn-o" id="ppOrderBtn" onclick="pendingPrintOrder()" disabled>📋 訂購並列印（已選 0 筆）</button>
+        <button class="btn btn-o" id="ppOrderBtn" onclick="pendingPrintOrder()" disabled>🖨️ 列印訂購單（已選 0 筆）</button>
       </div>
     </div>
   </div>
@@ -414,7 +415,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0}
       <button class="btn btn-p btn-sm" onclick="loadPendingOrders()">🔄 重整</button>
     </div>
     <div class="cb">
-      <div class="info-box">以下訂單需要電話或網路訂購，請逐一確認後按「已訂購」。</div>
+      <div class="info-box">以下訂單需要電話或網路訂購，確認訂購後狀態變為「已訂購」，可至訂單列表列印訂購單。</div>
       <div id="pendingCallContent"><div class="load">⏳ 載入中...</div></div>
     </div>
   </div>
@@ -855,7 +856,7 @@ function renderOrders(){
 }
 
 function mkBadge(s){
-  var m={'待確認':'b-pending 🔵','已訂購':'b-ordered 🟡','待通知出納':'b-notified 🟦','已核銷':'b-settled 🟣','已取消':'b-cancelled 🔴'};
+  var m={'待確認':'b-pending 🔵','待列印':'b-ordered 🟠','已訂購':'b-ordered 🟡','待通知出納':'b-notified 🟦','已核銷':'b-settled 🟣','已取消':'b-cancelled 🔴'};
   var p=(m[s]||'').split(' ');return'<span class="badge '+(p[0]||'')+'">'+(p[1]||'')+' '+e(s)+'</span>';
 }
 
@@ -1006,7 +1007,7 @@ function openEdit(id){
   document.getElementById('eVeg').value=o.veg||0;
   document.getElementById('ePrice').value=o.price||'';
   var warn=document.getElementById('editWarn');
-  var isOrdered=(o.status==='已訂購'||o.status==='待通知出納');
+  var isOrdered=(o.status==='已訂購'||o.status==='待通知出納'||o.status==='待列印');
   warn.style.display=isOrdered?'block':'none';
   popSel('eOffice',cfg.offices,'請選擇');document.getElementById('eOffice').value=o.office;
   popBuyersByOffice(o.office,'eBuyer');document.getElementById('eBuyer').value=o.buyer;
@@ -1134,8 +1135,15 @@ function batchOrder(){
 
 function reprintOrder(id){
   var o=allOrders.find(function(x){return x.id===id;});
-  if(!o) return;
-  openPrintWindow([o]);
+  if(o){openPrintWindow([o]);return;}
+  // fallback: 從後端重新取得
+  google.script.run.withSuccessHandler(function(r){
+    if(r&&r.success&&r.data){
+      var found=r.data.find(function(x){return x.id===id;});
+      if(found) openPrintWindow([found]);
+      else toast('找不到訂單','error');
+    }
+  }).getOrders(null);
 }
 
 function singleOrder(id){
@@ -1269,12 +1277,15 @@ function updateBbar(){
 
 // ── Pending Orders Tab ──
 var ppSelIds = new Set();
+var pcSelIds = new Set();
 
 function loadPendingOrders(){
   document.getElementById('pendingPrintContent').innerHTML='<div class="load">⏳ 載入中...</div>';
   document.getElementById('pendingCallContent').innerHTML='<div class="load">⏳ 載入中...</div>';
   document.getElementById('pendingPrintTsum').style.display='none';
+  document.getElementById('pendingCallTsum').style.display='none';
   ppSelIds.clear();
+  pcSelIds.clear();
 
   google.script.run.withSuccessHandler(function(r){
     if(!r.success){
@@ -1282,17 +1293,17 @@ function loadPendingOrders(){
       document.getElementById('pendingCallContent').innerHTML='<div style="color:var(--red)">載入失敗</div>';
       return;
     }
-    var pending=r.data.filter(function(o){return o.status==='待確認';});
+    var pending=r.data.filter(function(o){return o.status==='待確認'||o.status==='待列印';});
     var today=todayStr();
     var in3=addWorkdays(today,3);
 
-    // 所有待確認訂單都可列印，依廠商訂購方式分類
+    // 依廠商訂購方式分類
     var printOrders=[], callOrders=[];
     pending.forEach(function(o){
       var v=cfg.vendors.find(function(x){return x.name===o.vendor;});
       var om=(v&&v.orderMethod)||'紙本';
-      if(om==='紙本') printOrders.push({order:o,vendor:v});
-      else callOrders.push({order:o,vendor:v,om:om});
+      if(om==='紙本' && o.status==='待確認') printOrders.push({order:o,vendor:v});
+      else if(om!=='紙本') callOrders.push({order:o,vendor:v,om:om});
     });
 
     // 紙本訂購表格
@@ -1324,30 +1335,40 @@ function loadPendingOrders(){
     // 電話/網路訂購
     if(!callOrders.length){
       document.getElementById('pendingCallContent').innerHTML='<div class="empty"><div class="ei">✅</div><div>沒有待電話/網路訂購的訂單</div></div>';
+      document.getElementById('pendingCallTsum').style.display='none';
     } else {
+      var pcSelIds_local=pcSelIds; // reference
       var h2='<div class="tw"><table><thead><tr>'
-        +'<th>處室</th><th>廠商</th><th>方式</th><th>聯絡</th><th>訂購人</th><th>送餐日</th><th>地點</th><th class="tr">葷</th><th class="tr">素</th><th class="tr">金額</th><th class="tc">操作</th>'
+        +'<th style="width:36px"><input type="checkbox" id="pcChkAll" onchange="pcToggleAll(this)"></th>'
+        +'<th>處室</th><th>廠商</th><th>方式</th><th>聯絡</th><th>訂購人</th><th>送餐日</th><th class="tr">金額</th><th class="tc">操作</th>'
         +'</tr></thead><tbody>';
       callOrders.forEach(function(item){
         var o=item.order; var v=item.vendor; var om=item.om;
         var urgent=o.date>=today&&o.date<=in3;
+        var isOrdered=o.status==='待列印';
         var contact='';
         if(om==='電話'&&v&&v.phone) contact='<a href="tel:'+e(v.phone)+'" style="color:var(--blue);">📞 '+e(v.phone)+'</a>';
         else if(om==='網路'&&v&&v.url) contact='<a href="'+e(v.url)+'" target="_blank" style="color:var(--blue);">🌐 開啟</a>';
         h2+='<tr'+(urgent?' style="background:var(--gold-l);"':'')+' id="pc-'+o.id+'">'
+          +'<td>'+(isOrdered?'<input type="checkbox" class="pcrc" value="'+o.id+'" onchange="pcToggleRow(this)">':'<span style="color:var(--text2);font-size:16px;">○</span>')+'</td>'
           +'<td>'+e(o.office)+'</td><td>'+e(o.vendor)+'</td>'
           +'<td><span style="font-size:11px;background:var(--blue-l);color:var(--blue);padding:2px 6px;border-radius:10px;">'+e(om)+'</span></td>'
           +'<td>'+contact+'</td>'
           +'<td>'+e(o.buyer)+'</td>'
           +'<td class="nw">'+(urgent?'⚠️ ':'')+e(o.date)+'</td>'
-          +'<td>'+e(o.location)+'</td>'
-          +'<td class="tr">'+o.meat+'</td><td class="tr">'+o.veg+'</td>'
           +'<td class="tr bold">$'+o.amount+'</td>'
-          +'<td class="tc"><button class="btn btn-o btn-sm" onclick="pendingCallOrder(\''+o.id+'\')">✓ 已訂購</button></td>'
+          +'<td class="tc" style="white-space:nowrap;">'
+          +(isOrdered
+            ? '<span style="font-size:11px;color:var(--blue);">📋 可勾選列印</span>'
+            : '<button class="btn btn-p btn-sm" onclick="pendingCallOrder(\''+o.id+'\')">✓ 確認訂購</button>'
+          )
+          +'</td>'
           +'</tr>';
       });
       h2+='</tbody></table></div>';
       document.getElementById('pendingCallContent').innerHTML=h2;
+      document.getElementById('pendingCallTsum').style.display='flex';
+      updatePcSummary();
     }
   }).getOrders(null);
 }
@@ -1371,16 +1392,52 @@ function updatePpSummary(){
   document.getElementById('ppAmt').textContent='$'+amt.toLocaleString();
   var btn=document.getElementById('ppOrderBtn');
   btn.disabled=cnt===0;
-  btn.textContent='📋 訂購並列印（已選 '+cnt+' 筆）';
+  btn.textContent='🖨️ 列印訂購單（已選 '+cnt+' 筆）';
+}
+
+function pcToggleAll(cb){
+  document.querySelectorAll('.pcrc').forEach(function(c){c.checked=cb.checked;if(cb.checked)pcSelIds.add(c.value);else pcSelIds.delete(c.value);});
+  updatePcSummary();
+}
+function pcToggleRow(cb){
+  if(cb.checked)pcSelIds.add(cb.value);else pcSelIds.delete(cb.value);
+  updatePcSummary();
+}
+function updatePcSummary(){
+  var cnt=pcSelIds.size;
+  var amt=0;
+  pcSelIds.forEach(function(id){
+    var o=allOrders.find(function(x){return x.id===id;});
+    if(o) amt+=o.amount||0;
+  });
+  document.getElementById('pcCnt').textContent=cnt;
+  document.getElementById('pcAmt').textContent='$'+amt.toLocaleString();
+  var btn=document.getElementById('pcPrintBtn');
+  if(btn){btn.disabled=cnt===0;btn.textContent='🖨️ 列印訂購單（已選 '+cnt+' 筆）';}
+}
+function pendingCallPrint(){
+  var ids=Array.from(pcSelIds);
+  if(!ids.length){toast('請選取待列印的訂單','error');return;}
+  if(!confirm('確認列印 '+ids.length+' 筆訂購單？列印後訂單將標記為「已訂購」。'))return;
+  // 先列印，列印視窗開啟後再標記已訂購
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){
+      toast('✓ 已列印並標記已訂購 '+ids.length+' 筆','success');
+      if(r.docResult&&r.docResult.success) toast('📄 已存：'+r.docResult.fileName,'success');
+      else if(r.docResult&&r.docResult.error) toast('⚠️ 存檔失敗：'+r.docResult.error,'error');
+      pcSelIds.clear(); loadPendingOrders(); loadOrders();
+      openPrintWindow(r.orders);
+    } else toast('失敗：'+r.error,'error');
+  }).markAsOrdered(ids);
 }
 
 function pendingPrintOrder(){
   var ids=Array.from(ppSelIds);
   if(!ids.length){toast('請選取訂單','error');return;}
-  if(!confirm('確認訂購並列印 '+ids.length+' 筆？'))return;
+  if(!confirm('確認列印 '+ids.length+' 筆訂購單？'))return;
   google.script.run.withSuccessHandler(function(r){
     if(r.success){
-      toast('✓ 已訂購 '+ids.length+' 筆','success');
+      toast('✓ 已訂購並列印 '+ids.length+' 筆','success');
       if(r.docResult&&r.docResult.success) toast('📄 已存：'+r.docResult.fileName,'success');
       else if(r.docResult&&r.docResult.error) toast('⚠️ 存檔失敗：'+r.docResult.error,'error');
       ppSelIds.clear(); loadPendingOrders(); loadOrders();
@@ -1390,13 +1447,13 @@ function pendingPrintOrder(){
 }
 
 function pendingCallOrder(id){
-  if(!confirm('確認已完成電話/網路訂購？'))return;
+  if(!confirm('確認已完成電話/網路訂購？訂單將進入「待列印」狀態。'))return;
   google.script.run.withSuccessHandler(function(r){
     if(r.success){
-      toast('✓ 已標記訂購','success');
+      toast('✓ 已確認訂購，請勾選後列印訂購單','success');
       loadPendingOrders(); loadOrders();
     } else toast('失敗：'+r.error,'error');
-  }).markAsOrdered([id]);
+  }).confirmCallOrder(id);
 }
 
 // ── Cash Orders ──
@@ -2036,6 +2093,6 @@ function pad(n){return String(n).padStart(2,'0');}
 function setToday(el){if(el)el.value=todayStr();}
 </script>
 
-<footer style="text-align:center;padding:16px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);margin-top:24px;">© 臺北市立內湖高級中學 餐盒訂購系統 · By Chris Chou</footer>
+<footer style="text-align:center;padding:16px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);margin-top:24px;">© 臺北市立內湖高級中學 餐盒訂購管理系統 · By Chris Chou</footer>
 </body>
 </html>
